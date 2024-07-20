@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "hardhat/console.sol";
 
 // deposit ether
 // claim pre-image
@@ -26,7 +27,8 @@ contract KeccakDoomsday is ERC20 {
     mapping(bytes32 => Claim) claims;
     uint256 public balance;
     uint256 public weiPerToken;
-    uint256 public immutable endTime;
+    uint256 public immutable startTime;
+    uint256 public immutable HALT_TIMEOUT = 10 * 365 * 24 * 60 * 60;
     bool public halted;
     uint8 public bitCount;
 
@@ -39,7 +41,7 @@ contract KeccakDoomsday is ERC20 {
         uint8 startBits,
         uint8 len
     ) ERC20("KeccakDoomsday", "KDD") {
-        endTime = block.timestamp + 10 * 365 * 24 * 60 * 60;
+        startTime = block.timestamp;
         rootHash = _rootHash;
         bitCount = len;
         for (uint8 x = startBits; x < startBits + len; x++) {
@@ -50,6 +52,10 @@ contract KeccakDoomsday is ERC20 {
                 claimedBy: payable(address(uint160(0)))
             });
         }
+    }
+
+    function endTime() public view returns (uint256) {
+        return startTime + HALT_TIMEOUT;
     }
 
     // hashes are claimed in a two step process
@@ -102,9 +108,11 @@ contract KeccakDoomsday is ERC20 {
     // prevent deposits, claim, and allow
     // withdrawals
     function haltIfNeeded() public {
-        if (!halted && block.timestamp > endTime) {
+        if (!halted && block.timestamp >= endTime()) {
             halted = true;
-            weiPerToken = balance / totalSupply();
+            if (totalSupply() > 0) {
+                weiPerToken = balance / totalSupply();
+            }
         }
     }
 

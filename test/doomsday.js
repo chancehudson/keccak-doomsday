@@ -73,6 +73,11 @@ describe("Doomsday", function () {
     const doomsday = await deploy(startBits, bitCount);
     const [signer1, signer2] = await ethers.getSigners();
     const sendAmount1 = "1290490124";
+    await expect(
+      doomsday.deposit({
+        value: "0",
+      }),
+    ).to.be.revertedWith("invalid deposit value");
     {
       await doomsday.deposit({
         from: signer1,
@@ -132,6 +137,9 @@ describe("Doomsday", function () {
     const startBalance = await doomsday.balance();
 
     await doomsday.beginClaim(claimHash, signer.address);
+    await expect(
+      doomsday.beginClaim(claimHash, signer.address),
+    ).to.be.revertedWith("claim already exists");
 
     // fail to claim with non-colliding pre-image
     await expect(doomsday.finishClaim(rootHash, bitCount)).to.be.revertedWith(
@@ -189,5 +197,50 @@ describe("Doomsday", function () {
     await expect(
       doomsday.finishClaim(collisionPreImage, startBits),
     ).to.be.revertedWith("claim has expired or does not exist");
+  });
+
+  it("should halt contract", async () => {
+    const startBits = 10;
+    const bitCount = 19;
+    const doomsday = await deploy(startBits, bitCount);
+    const rootHash = await doomsday.rootHash();
+    const HALT_TIMEOUT = await doomsday.HALT_TIMEOUT();
+    assert.equal(false, await doomsday.halted());
+    await network.provider.request({
+      method: "evm_increaseTime",
+      params: [HALT_TIMEOUT.toString()],
+    });
+    const exec = async (fn = async () => {}) => {
+      const snapshot = await network.provider.request({
+        method: "evm_snapshot",
+        params: [],
+      });
+      await fn();
+      await network.provider.request({
+        method: "evm_revert",
+        params: [snapshot],
+      });
+    };
+    // execute between snapshots to ensure haltIfNeeded is called
+    await exec(async () => {
+      const [signer] = await ethers.getSigners();
+      const sendAmount1 = "1290490124";
+      await expect(
+        doomsday.deposit({
+          value: sendAmount1,
+        }),
+      ).to.be.revertedWith("contract is halted");
+    });
+    await exec(async () => {
+      await expect(doomsday.finishClaim(rootHash, 0)).to.be.revertedWith(
+        "contract is halted",
+      );
+    });
+    await exec(async () => {
+      const [signer] = await ethers.getSigners();
+      await expect(
+        doomsday.beginClaim(rootHash, signer.address),
+      ).to.be.revertedWith("contract is halted");
+    });
   });
 });

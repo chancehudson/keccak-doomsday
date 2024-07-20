@@ -6,4 +6,5 @@ build/
 dist/
 cache/
 artifacts/
-
+coverage/
+coverage.json
