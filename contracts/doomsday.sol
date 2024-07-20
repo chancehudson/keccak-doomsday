@@ -26,13 +26,14 @@ contract KeccakDoomsday is ERC20 {
     bytes32 public immutable rootHash;
     mapping(bytes32 => Claim) claims;
     uint256 public balance;
-    uint256 public weiPerToken;
+    uint256 public finalWeiPerToken;
     uint256 public immutable startTime;
     uint256 public immutable HALT_TIMEOUT = 10 * 365 * 24 * 60 * 60;
     bool public halted;
     uint8 public bitCount;
 
     uint256 public immutable CLAIM_TIMEOUT = 24 hours;
+    uint256 public immutable WEI_PER_TOKEN = 1 gwei;
 
     event HashClaimed(uint8 bits, address claimedBy, uint256 weiClaimed);
 
@@ -111,7 +112,7 @@ contract KeccakDoomsday is ERC20 {
         if (!halted && block.timestamp >= endTime()) {
             halted = true;
             if (totalSupply() > 0) {
-                weiPerToken = balance / totalSupply();
+                finalWeiPerToken = balance / totalSupply();
             }
         }
     }
@@ -125,7 +126,7 @@ contract KeccakDoomsday is ERC20 {
         require(halted, "contract is not halted");
         _spendAllowance(owner, msg.sender, value);
         _update(owner, address(0), value);
-        destination.transfer(value * weiPerToken);
+        destination.transfer(value * finalWeiPerToken);
     }
 
     // withdraw some ether using tokens
@@ -133,14 +134,14 @@ contract KeccakDoomsday is ERC20 {
         haltIfNeeded();
         require(halted, "contract is not halted");
         _update(msg.sender, address(0), value);
-        destination.transfer(value * weiPerToken);
+        destination.transfer(value * finalWeiPerToken);
     }
 
     function deposit() public payable {
         haltIfNeeded();
         require(!halted, "contract is halted");
-        require(msg.value > 0, "invalid deposit value");
+        require(msg.value > WEI_PER_TOKEN, "invalid deposit value");
         balance += msg.value;
-        _mint(msg.sender, msg.value);
+        _mint(msg.sender, msg.value / WEI_PER_TOKEN);
     }
 }

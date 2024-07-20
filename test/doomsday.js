@@ -28,7 +28,7 @@ const findCollision = (target, bits, startAt = 0) => {
   }
 };
 
-async function deploy(startBits, bitCount) {
+async function deploy(startBits = 10, bitCount = 19) {
   const rootHash =
     "0x9000000000000000000000000000000000000000000000000000000000000000";
   const doomsday = await hre.ethers.deployContract("KeccakDoomsday", [
@@ -72,10 +72,16 @@ describe("Doomsday", function () {
     const bitCount = 10;
     const doomsday = await deploy(startBits, bitCount);
     const [signer1, signer2] = await ethers.getSigners();
-    const sendAmount1 = "1290490124";
+    const sendAmount1 = "12904129402104990124";
+    const WEI_PER_TOKEN = await doomsday.WEI_PER_TOKEN();
     await expect(
       doomsday.deposit({
         value: "0",
+      }),
+    ).to.be.revertedWith("invalid deposit value");
+    await expect(
+      doomsday.deposit({
+        value: (WEI_PER_TOKEN - 1n).toString(),
       }),
     ).to.be.revertedWith("invalid deposit value");
     {
@@ -86,7 +92,7 @@ describe("Doomsday", function () {
 
       {
         const tokenBalance = await doomsday.balanceOf(signer1.address);
-        assert.equal(tokenBalance, sendAmount1);
+        assert.equal(tokenBalance, BigInt(sendAmount1) / WEI_PER_TOKEN);
       }
       {
         const tokenBalance = await doomsday.balanceOf(signer2.address);
@@ -96,13 +102,13 @@ describe("Doomsday", function () {
       assert.equal(contractBalance, sendAmount1);
     }
     {
-      const sendAmount2 = "19242104";
+      const sendAmount2 = "192214910442104";
       await doomsday.connect(signer2).deposit({
         from: signer2,
         value: sendAmount2,
       });
       const tokenBalance = await doomsday.balanceOf(signer2.address);
-      assert.equal(tokenBalance, sendAmount2);
+      assert.equal(tokenBalance, BigInt(sendAmount2) / WEI_PER_TOKEN);
       const contractBalance = await doomsday.balance();
       assert.equal(
         contractBalance,
@@ -242,5 +248,143 @@ describe("Doomsday", function () {
         doomsday.beginClaim(rootHash, signer.address),
       ).to.be.revertedWith("contract is halted");
     });
+  });
+
+  it("should fail to withdraw before halting", async () => {
+    const doomsday = await deploy();
+    const [signer] = await ethers.getSigners();
+    await expect(doomsday.withdraw(0, signer.address)).to.be.revertedWith(
+      "contract is not halted",
+    );
+    await expect(
+      doomsday.withdrawFrom(0, signer.address, signer.address),
+    ).to.be.revertedWith("contract is not halted");
+  });
+
+  it("should allow withdrawal", async () => {
+    const startBits = 10;
+    const bitCount = 19;
+    const doomsday = await deploy(startBits, bitCount);
+    const rootHash = await doomsday.rootHash();
+    const [signer1, signer2] = await ethers.getSigners();
+    const signer1DepositAmount = "12120421509750109419";
+    const signer2DepositAmount = "651905992499021940294";
+    {
+      await doomsday.connect(signer1).deposit({
+        value: signer1DepositAmount,
+      });
+    }
+    {
+      await doomsday.connect(signer2).deposit({
+        value: signer2DepositAmount,
+      });
+    }
+    const targets = Array(bitCount)
+      .fill()
+      .map((_, i) => {
+        return `0x${(BigInt(rootHash) + BigInt(startBits + i)).toString(16).padStart(64, "0")}`;
+      });
+
+    const collisionPreImage = findCollision(targets[0], startBits);
+    const claimPreImage = `0x${(BigInt(collisionPreImage) + 1n).toString(16).padStart(64, "0")}`;
+    const claimHash = ethers.solidityPackedKeccak256(
+      ["bytes32"],
+      [claimPreImage],
+    );
+
+    await doomsday.beginClaim(claimHash, signer1.address);
+    await expect(doomsday.finishClaim(collisionPreImage, startBits)).to.emit(
+      doomsday,
+      "HashClaimed",
+    );
+
+    const HALT_TIMEOUT = await doomsday.HALT_TIMEOUT();
+    await network.provider.request({
+      method: "evm_increaseTime",
+      params: [HALT_TIMEOUT.toString()],
+    });
+
+    await doomsday.haltIfNeeded();
+    const finalWeiPerToken = await doomsday.finalWeiPerToken();
+    // withdraw a single token
+    {
+      const target = `0x${Array(40).fill("1").join("")}`;
+      const startBalance = await doomsday.balanceOf(signer1.address);
+      await doomsday.connect(signer1).withdraw(1, target);
+      const endBalance = await doomsday.balanceOf(signer1.address);
+      assert.equal(BigInt(endBalance), BigInt(startBalance) - 1n);
+      const destBalance = await signer1.provider.getBalance(target);
+      assert.equal(BigInt(destBalance), finalWeiPerToken);
+    }
+    // withdraw all tokens
+    {
+      const target = `0x${Array(40).fill("2").join("")}`;
+      const startBalance = await doomsday.balanceOf(signer1.address);
+      // fail to withdraw more than balance
+      await expect(
+        doomsday.connect(signer1).withdraw(startBalance + 1n, target),
+      ).to.be.reverted;
+      await doomsday.connect(signer1).withdraw(startBalance, target);
+      const destBalance = await signer1.provider.getBalance(target);
+      assert.equal(BigInt(destBalance), finalWeiPerToken * startBalance);
+    }
+  });
+
+  it("should allow withdrawFrom", async () => {
+    const startBits = 10;
+    const bitCount = 19;
+    const doomsday = await deploy(startBits, bitCount);
+    const rootHash = await doomsday.rootHash();
+    const [signer1, signer2, signer3] = await ethers.getSigners();
+    const signer1DepositAmount = "12120421509750109419";
+    const signer2DepositAmount = "651905992499021940294";
+    {
+      await doomsday.connect(signer1).deposit({
+        value: signer1DepositAmount,
+      });
+    }
+    {
+      await doomsday.connect(signer2).deposit({
+        value: signer2DepositAmount,
+      });
+    }
+    const targets = Array(bitCount)
+      .fill()
+      .map((_, i) => {
+        return `0x${(BigInt(rootHash) + BigInt(startBits + i)).toString(16).padStart(64, "0")}`;
+      });
+
+    const collisionPreImage = findCollision(targets[0], startBits);
+    const claimPreImage = `0x${(BigInt(collisionPreImage) + 1n).toString(16).padStart(64, "0")}`;
+    const claimHash = ethers.solidityPackedKeccak256(
+      ["bytes32"],
+      [claimPreImage],
+    );
+
+    await doomsday.beginClaim(claimHash, signer1.address);
+    await expect(doomsday.finishClaim(collisionPreImage, startBits)).to.emit(
+      doomsday,
+      "HashClaimed",
+    );
+
+    const HALT_TIMEOUT = await doomsday.HALT_TIMEOUT();
+    await network.provider.request({
+      method: "evm_increaseTime",
+      params: [HALT_TIMEOUT.toString()],
+    });
+
+    await doomsday.haltIfNeeded();
+    const finalWeiPerToken = await doomsday.finalWeiPerToken();
+    const target = `0x${Array(40).fill("f").join("")}`;
+    await doomsday.connect(signer1).approve(signer3.address, 1);
+    await expect(
+      doomsday.connect(signer3).withdrawFrom(2, signer1.address, target),
+    ).to.be.reverted;
+    await doomsday.connect(signer3).withdrawFrom(1, signer1.address, target);
+    await expect(
+      doomsday.connect(signer3).withdrawFrom(1, signer1.address, target),
+    ).to.be.reverted;
+    const destBalance = await signer1.provider.getBalance(target);
+    assert.equal(destBalance, finalWeiPerToken);
   });
 });
