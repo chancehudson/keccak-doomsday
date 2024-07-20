@@ -1,0 +1,18 @@
+{
+  "name": "keccak-doomsday",
+  "version": "0.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "hardhat compile",
+    "test": "hardhat test"
+  },
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.7",
+    "@nomicfoundation/hardhat-ethers": "^3.0.6",
+    "@openzeppelin/contracts": "^5.0.2",
+    "hardhat": "^2.22.6"
+  }
+}

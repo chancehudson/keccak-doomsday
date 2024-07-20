@@ -1,0 +1,9 @@
+*.tmp
+*.swp
+.DS_Store
+node_modules/
+build/
+dist/
+cache/
+artifacts/
+
