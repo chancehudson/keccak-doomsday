@@ -28,6 +28,32 @@ const findCollision = (target, bits, startAt = 0) => {
   }
 };
 
+const findOneOffCollision = (target, bits) => {
+  let startAt = 1 << 40;
+  for (;;) {
+    const collision = findCollision(target, bits);
+    const target_bits = BigInt(target)
+      .toString(2)
+      .split("")
+      .reverse()
+      .slice(0, bits + 1)
+      .join("");
+    const collision_hash_bits = BigInt(
+      ethers.solidityPackedKeccak256(["bytes32"], [collision]),
+    )
+      .toString(2)
+      .split("")
+      .reverse()
+      .slice(0, bits + 1)
+      .join("");
+    if (target_bits != collision_hash_bits) {
+      console.log(target_bits, collision_hash_bits);
+      return collision;
+    }
+    startAt += 1 << 40;
+  }
+};
+
 async function deploy(startBits = 10, bitCount = 19) {
   const rootHash =
     "0x9000000000000000000000000000000000000000000000000000000000000000";
@@ -171,6 +197,42 @@ describe("Doomsday", function () {
     ).to.be.revertedWith("target has already been claimed");
     const endBalance = await doomsday.balance();
     assert.equal(expectedReward, BigInt(startBalance) - BigInt(endBalance));
+  });
+
+  it("should compare bits correctly", async () => {
+    const startBits = 10;
+    const bitCount = 19;
+    const doomsday = await deploy(startBits, bitCount);
+    const rootHash = await doomsday.rootHash();
+    const [signer] = await ethers.getSigners();
+    const sendAmount = "1294019401094";
+    await doomsday.deposit({
+      value: sendAmount,
+    });
+    const targets = Array(bitCount)
+      .fill()
+      .map((_, i) => {
+        return `0x${(BigInt(rootHash) + BigInt(startBits + i)).toString(16).padStart(64, "0")}`;
+      });
+
+    const preImage = findOneOffCollision(targets[0], startBits - 1);
+    // const snapshot = await network.provider.request({
+    //   method: "evm_snapshot",
+    //   params: [],
+    // });
+    const claimPreImage = `0x${(BigInt(preImage) + 1n).toString(16).padStart(64, "0")}`;
+    const claimHash = ethers.solidityPackedKeccak256(
+      ["bytes32"],
+      [claimPreImage],
+    );
+    await doomsday.beginClaim(claimHash, signer.address);
+    await expect(doomsday.finishClaim(preImage, startBits)).to.be.revertedWith(
+      "hash mismatch",
+    );
+    // await network.provider.request({
+    //   method: "evm_revert",
+    //   params: [snapshot],
+    // });
   });
 
   it("should fail to claim after time expires", async () => {
