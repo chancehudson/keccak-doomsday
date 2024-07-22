@@ -7,19 +7,24 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 // claim pre-image
 // payout at end of time
 contract KeccakDoomsday is ERC20 {
+    // a hash and a number of bits that must be
+    // collided in order to claim a payout
     struct HashTarget {
         bytes32 hash;
         uint8 bits;
         bool claimed;
         address payable claimedBy;
     }
+    // a claim being made by a user saying they
+    // collided a HashTarget. This is done in two
+    // steps to avoid frontrunning, see beginClaim
+    // and finishClaim below
     struct Claim {
         uint256 validUntil;
         bytes32 commitValue;
         bytes32 preImage;
         address payable claimant;
     }
-    // collisions for 0 bits can be claimed
 
     mapping(uint8 => HashTarget) public targets;
     bytes32 public immutable rootHash;
@@ -36,6 +41,13 @@ contract KeccakDoomsday is ERC20 {
 
     event HashClaimed(uint8 bits, address claimedBy, uint256 weiClaimed);
 
+    // initialize the contract with a rootHash and a bit range for
+    // which bounties are available
+    //
+    // each hash target is 1 bit away from the previous (e.g. add 1
+    // to the previous has target). This is to also put a bounty on
+    // collisions by proximity. e.g. if someone finds a way to find
+    // pre-images with outputs near each other we want to know
     constructor(
         bytes32 _rootHash,
         uint8 startBits,
@@ -54,6 +66,8 @@ contract KeccakDoomsday is ERC20 {
         }
     }
 
+    // the time at which bounties are removed and funds are
+    // returned to token holders
     function endTime() public view returns (uint256) {
         return startTime + HALT_TIMEOUT;
     }
@@ -64,6 +78,7 @@ contract KeccakDoomsday is ERC20 {
     // i = T pre-image
     // 1. claimant commits to a hash H(i + 1)
     // 2. claimant provides a pre-image corresponding to H(i + 1)
+    //    i is the pre-image that collides with the target
     function beginClaim(bytes32 commitValue, address payable claimant) public {
         haltIfNeeded();
         require(!halted, "contract is halted");
@@ -80,6 +95,9 @@ contract KeccakDoomsday is ERC20 {
         });
     }
 
+    // finish a claim that was start above. Check that the pre-image
+    // actually collides with the target and that it has not already
+    // been claimed
     function finishClaim(bytes32 preImage, uint8 bits) public {
         haltIfNeeded();
         require(!halted, "contract is halted");
@@ -105,7 +123,7 @@ contract KeccakDoomsday is ERC20 {
     }
 
     // if the end of the clock is reached
-    // prevent deposits, claim, and allow
+    // prevent deposits, claims, and allow
     // withdrawals
     function haltIfNeeded() public {
         if (!halted && block.timestamp >= endTime()) {
@@ -128,7 +146,8 @@ contract KeccakDoomsday is ERC20 {
         destination.transfer(value * finalWeiPerToken);
     }
 
-    // withdraw some ether using tokens
+    // withdraw some ether using tokens, only available
+    // after the endTime has been reached
     function withdraw(uint256 value, address payable destination) public {
         haltIfNeeded();
         require(halted, "contract is not halted");
@@ -136,6 +155,7 @@ contract KeccakDoomsday is ERC20 {
         destination.transfer(value * finalWeiPerToken);
     }
 
+    // deposit ether and receive tokens
     function deposit() public payable {
         haltIfNeeded();
         require(!halted, "contract is halted");
