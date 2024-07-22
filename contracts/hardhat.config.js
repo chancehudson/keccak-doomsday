@@ -2,6 +2,7 @@
 require("@nomicfoundation/hardhat-ethers");
 require("@nomicfoundation/hardhat-chai-matchers");
 require("solidity-coverage");
+require("@nomicfoundation/hardhat-ignition-ethers");
 
 module.exports = {
   solidity: "0.8.20",
