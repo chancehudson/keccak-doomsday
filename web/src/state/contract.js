@@ -9,17 +9,14 @@ export default class ContractState {
   targets = [];
   nextTarget = null;
   expectedReward = 0n;
+  address = "0xCA25263076894d34d1f7054F5397f3de6B2FB578";
 
   constructor() {
     makeAutoObservable(this);
     this.provider = new ethers.JsonRpcProvider(
       "https://eth-sepolia.g.alchemy.com/v2/SMH5q-gqe7zv8J7BR6OQRZiCd9I8r3le",
     );
-    this.contract = new ethers.Contract(
-      "0xCA25263076894d34d1f7054F5397f3de6B2FB578",
-      abi,
-      this.provider,
-    );
+    this.contract = new ethers.Contract(this.address, abi, this.provider);
     if (typeof window !== "undefined") {
       this.loadPromise = this.load();
     } else {

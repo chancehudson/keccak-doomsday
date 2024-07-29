@@ -53,7 +53,19 @@ export default observer(() => {
           padding: "4px",
         }}
       >
-        <h2>Contract Info</h2>
+        <h2>Contract</h2>
+        <p>
+          Address:{" "}
+          <a
+            target="_blank"
+            href={`https://sepolia.etherscan.io/address/${contract.address}`}
+          >
+            {contract.address}
+          </a>
+        </p>
+        <p>
+          Network: <strong>Sepolia</strong>
+        </p>
         <p>
           Current balance:{" "}
           <strong>
