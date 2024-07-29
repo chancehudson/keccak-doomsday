@@ -16,7 +16,7 @@ export default class ContractState {
       "https://eth-sepolia.g.alchemy.com/v2/SMH5q-gqe7zv8J7BR6OQRZiCd9I8r3le",
     );
     this.contract = new ethers.Contract(
-      "0x26E2BB2CbA01EcC578674F81b2411F9Ae2286BdD",
+      "0xCA25263076894d34d1f7054F5397f3de6B2FB578",
       abi,
       this.provider,
     );
@@ -36,6 +36,60 @@ export default class ContractState {
       this.loadNextTarget(),
       this.loadExpectedReward(),
     ]);
+  }
+
+  async loadClaim(hash) {
+    return this.contract.claims(hash);
+  }
+
+  async beginOrFinishClaim(preImage) {
+    if (!window.ethereum) {
+      throw new Error("no ethereum provider");
+    }
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+    const claimPreImage = `0x${(BigInt(preImage) + 1n).toString(16).padStart(64, "0")}`;
+    const claimHash = ethers.solidityPackedKeccak256(
+      ["bytes32"],
+      [claimPreImage],
+    );
+    // check if a claim already exists, finalize claim if possible
+    const claim = await this.contract.claims(claimHash);
+    if (claim.validUntil > +new Date() / 1000) {
+      if (BigInt(claim.claimant) !== BigInt(accounts[0])) {
+        throw new Error("claim already exists and is not yours");
+      }
+      const txData = await this.contract.finishClaim.populateTransaction(
+        preImage,
+        this.nextTarget[1],
+      );
+      await window.ethereum.request({
+        method: "eth_sendTransaction",
+        params: [
+          {
+            to: this.contract.target,
+            from: accounts[0],
+            data: txData.data,
+          },
+        ],
+      });
+      return;
+    }
+    const txData = await this.contract.beginClaim.populateTransaction(
+      claimHash,
+      accounts[0],
+    );
+    await window.ethereum.request({
+      method: "eth_sendTransaction",
+      params: [
+        {
+          to: this.contract.target,
+          from: accounts[0],
+          data: txData.data,
+        },
+      ],
+    });
   }
 
   async deposit(weiAmount) {

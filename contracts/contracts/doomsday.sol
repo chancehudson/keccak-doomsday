@@ -28,7 +28,7 @@ contract KeccakDoomsday is ERC20 {
 
     mapping(uint8 => HashTarget) public targets;
     bytes32 public immutable rootHash;
-    mapping(bytes32 => Claim) claims;
+    mapping(bytes32 => Claim) public claims;
     uint256 public balance;
     uint256 public finalWeiPerToken;
     uint256 public immutable startTime;

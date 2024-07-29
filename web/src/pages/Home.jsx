@@ -2,6 +2,7 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import state from "../state/state";
 import Deposit from "../components/Deposit";
+import Claim from "../components/Claim";
 import convert from "ethereum-unit-converter";
 
 export default observer(() => {
@@ -101,6 +102,7 @@ export default observer(() => {
           </>
         ) : null}
         <Deposit />
+        <Claim />
       </div>
     </div>
   );
