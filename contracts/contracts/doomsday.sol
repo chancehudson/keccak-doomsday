@@ -68,6 +68,29 @@ contract KeccakDoomsday is ERC20 {
         }
     }
 
+    function decimals() public pure override returns (uint8) {
+        return 0;
+    }
+
+    function expectedReward() public view returns (uint256) {
+        return balance / bitCount;
+    }
+
+    function nextTarget() public view returns (HashTarget memory) {
+        for (uint8 x = startBits; x < startBits + bitCount; x++) {
+            if (!targets[x].claimed) {
+                return targets[x];
+            }
+        }
+        return
+            HashTarget({
+                hash: bytes32(0),
+                bits: 0,
+                claimed: false,
+                claimedBy: payable(address(uint160(0)))
+            });
+    }
+
     // the time at which bounties are removed and funds are
     // returned to token holders
     function endTime() public view returns (uint256) {
@@ -118,7 +141,7 @@ contract KeccakDoomsday is ERC20 {
         bytes32 mask = bytes32(~(type(uint256).max << bits));
         require((hash & mask) == (target.hash & mask), "hash mismatch");
         target.claimed = true;
-        uint256 claimAmount = balance / bitCount;
+        uint256 claimAmount = expectedReward();
         balance -= claimAmount;
         claims[claimHash].claimant.transfer(claimAmount);
         emit HashClaimed(bits, claims[claimHash].claimant, claimAmount);
@@ -161,7 +184,7 @@ contract KeccakDoomsday is ERC20 {
     function deposit() public payable {
         haltIfNeeded();
         require(!halted, "contract is halted");
-        require(msg.value > WEI_PER_TOKEN, "invalid deposit value");
+        require(msg.value >= WEI_PER_TOKEN, "invalid deposit value");
         balance += msg.value;
         _mint(msg.sender, msg.value / WEI_PER_TOKEN);
     }

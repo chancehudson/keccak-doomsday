@@ -16,7 +16,7 @@ export default class ContractState {
       "https://eth-sepolia.g.alchemy.com/v2/SMH5q-gqe7zv8J7BR6OQRZiCd9I8r3le",
     );
     this.contract = new ethers.Contract(
-      "0xB002A3875D74CF7B6364bf28616147dDEb5af9bD",
+      "0x26E2BB2CbA01EcC578674F81b2411F9Ae2286BdD",
       abi,
       this.provider,
     );
@@ -32,7 +32,9 @@ export default class ContractState {
     await Promise.all([
       this.loadBalance(),
       this.loadHalted(),
-      this.loadTargets(),
+      // this.loadTargets(),
+      this.loadNextTarget(),
+      this.loadExpectedReward(),
     ]);
   }
 
@@ -63,13 +65,18 @@ export default class ContractState {
   // load the total balance in the contract
   async loadBalance() {
     this.balance = await this.contract.balance();
-    // TODO: return this directly
-    const bitCount = await this.contract.bitCount();
-    this.expectedReward = BigInt(this.balance) / BigInt(bitCount);
+  }
+
+  async loadExpectedReward() {
+    this.expectedReward = await this.contract.expectedReward();
   }
 
   async loadHalted() {
     this.halted = await this.contract.halted();
+  }
+
+  async loadNextTarget() {
+    this.nextTarget = await this.contract.nextTarget();
   }
 
   // load the targets that are available to be broken
@@ -79,16 +86,10 @@ export default class ContractState {
       this.contract.bitCount(),
     ]);
     const newTargets = [];
-    let nextTarget = null;
     for (let x = startBits; x < startBits + len; x++) {
       const target = await this.contract.targets(x);
-      if (target.claimed === false && nextTarget === null) {
-        nextTarget = target;
-      }
       newTargets.push(target);
     }
     this.targets = newTargets;
-    // TODO: return this directly
-    this.nextTarget = nextTarget;
   }
 }

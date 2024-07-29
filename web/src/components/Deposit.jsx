@@ -33,6 +33,11 @@ export default observer(() => {
           onClick={async () => {
             try {
               await contract.deposit(convert(amount, "gwei").wei);
+              setAmount("");
+              await Promise.all([
+                contract.loadBalance(),
+                contract.loadExpectedReward(),
+              ]);
             } catch (err) {
               console.log("transaction error", err);
             }

@@ -15,7 +15,14 @@ export default observer(() => {
         flexWrap: "wrap",
       }}
     >
-      <div style={{ maxWidth: "500px" }}>
+      <div
+        style={{
+          maxWidth: "500px",
+          margin: "4px",
+          border: "1px solid black",
+          padding: "4px",
+        }}
+      >
         <h2>Keccak Doomsday</h2>
         <p>Put a bounty on progressively breaking the Keccak hash function!</p>
         <h4>Why?</h4>
@@ -37,7 +44,14 @@ export default observer(() => {
           remaining Ether is returned to the token holders.
         </p>
       </div>
-      <div style={{ maxWidth: "500px" }}>
+      <div
+        style={{
+          maxWidth: "500px",
+          margin: "4px",
+          border: "1px solid black",
+          padding: "4px",
+        }}
+      >
         <h2>Contract Info</h2>
         <p>
           Current balance:{" "}
