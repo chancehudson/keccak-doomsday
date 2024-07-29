@@ -103,7 +103,7 @@ export default observer(() => {
             <div style={{ display: "flex" }}>
               <span style={{ width: "12px" }} />
               <span>
-                Expected reward:{" "}
+                Minimum reward:{" "}
                 <strong>
                   {convert(contract.expectedReward, "wei").ether} ether
                 </strong>
