@@ -36,6 +36,30 @@ export default class ContractState {
     ]);
   }
 
+  async deposit(weiAmount) {
+    if (!window.ethereum) {
+      throw new Error("no ethereum provider");
+    }
+    const txData = await this.contract.deposit.populateTransaction({
+      value: weiAmount.toString(),
+    });
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+    console.log(txData.value.toString(16));
+    await window.ethereum.request({
+      method: "eth_sendTransaction",
+      params: [
+        {
+          to: this.contract.target,
+          from: accounts[0],
+          data: txData.data,
+          value: `0x${BigInt(weiAmount).toString(16)}`,
+        },
+      ],
+    });
+  }
+
   // load the total balance in the contract
   async loadBalance() {
     this.balance = await this.contract.balance();

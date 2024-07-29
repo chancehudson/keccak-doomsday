@@ -1,6 +1,8 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 import state from "../state/state";
+import Deposit from "../components/Deposit";
+import convert from "ethereum-unit-converter";
 
 export default observer(() => {
   const { contract } = React.useContext(state);
@@ -38,7 +40,10 @@ export default observer(() => {
       <div style={{ maxWidth: "500px" }}>
         <h2>Contract Info</h2>
         <p>
-          Current balance: <strong>{contract.balance.toString()} wei</strong>
+          Current balance:{" "}
+          <strong>
+            {convert(contract.balance.toString(), "wei").ether} ether
+          </strong>
         </p>
         <p>
           Halted: <strong>{contract.halted.toString()}</strong>
@@ -63,7 +68,9 @@ export default observer(() => {
               <span style={{ width: "12px" }} />
               <span>
                 Expected reward:{" "}
-                <strong>{contract.expectedReward.toString()} wei</strong>
+                <strong>
+                  {convert(contract.expectedReward, "wei").ether} ether
+                </strong>
               </span>
             </div>
             <p>
@@ -79,6 +86,7 @@ export default observer(() => {
             </p>
           </>
         ) : null}
+        <Deposit />
       </div>
     </div>
   );
