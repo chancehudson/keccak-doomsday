@@ -1,5 +1,9 @@
 import { createContext } from "react";
 import ContractState from "./contract";
+import { configure } from "mobx";
+configure({
+  enforceActions: "never",
+});
 
 export const buildState = () => {
   const state = {};

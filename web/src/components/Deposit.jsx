@@ -22,6 +22,7 @@ export default observer(() => {
           placeholder="0 (gwei)"
           type="text"
           value={amount}
+          style={{ marginBottom: "4px" }}
           onChange={(e) => {
             if (e.target.value.match(/^[0-9]*$/)) {
               setAmount(e.target.value);

@@ -31,6 +31,7 @@ const findCollision = (target, bits, startAt = 0) => {
 export default observer(() => {
   const { contract } = React.useContext(state);
   const [preImage, setPreImage] = React.useState("");
+  const [waitingToFinish, setWaitingToFinish] = React.useState(false);
   return (
     <div>
       <h2>Claim</h2>
@@ -40,10 +41,21 @@ export default observer(() => {
         claim your reward. This 2 phase approach is to avoid others frontrunning
         your transaction.
       </p>
+      <p>
+        Use the begin claim button first, then wait at least 2 minutes after
+        transaction confirmation to use finish claim. A claim is valid for 24
+        hours after it begins.
+      </p>
+      <p>
+        DEV NOTE: for testing you can use finish claim immediately after begin
+        claim transaction is confirmed.
+      </p>
       <input
         placeholder="hash pre-image hex"
         type="text"
         value={preImage}
+        size={66}
+        style={{ fontSize: "11px", marginBottom: "4px" }}
         onChange={(e) => {
           setPreImage(e.target.value);
         }}
@@ -52,13 +64,24 @@ export default observer(() => {
       <button
         onClick={async () => {
           try {
-            await contract.beginOrFinishClaim(preImage);
+            await contract.beginClaim(preImage);
           } catch (err) {
             console.log("transaction error", err);
           }
         }}
       >
-        claim
+        begin claim
+      </button>
+      <button
+        onClick={async () => {
+          try {
+            await contract.finishClaim(preImage);
+          } catch (err) {
+            console.log("transaction error", err);
+          }
+        }}
+      >
+        finish claim
       </button>
       <button
         onClick={() => {

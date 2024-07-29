@@ -39,6 +39,81 @@ export default class ContractState {
     return this.contract.claims(hash);
   }
 
+  async claimActive(preImage) {
+    const claimPreImage = `0x${(BigInt(preImage) + 1n).toString(16).padStart(64, "0")}`;
+    const claimHash = ethers.solidityPackedKeccak256(
+      ["bytes32"],
+      [claimPreImage],
+    );
+    // check if a claim already exists, finalize claim if possible
+    const claim = await this.contract.claims(claimHash);
+    return claim.validUntil > +new Date() / 1000;
+  }
+
+  async beginClaim(preImage) {
+    if (!window.ethereum) {
+      throw new Error("no ethereum provider");
+    }
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+    const claimPreImage = `0x${(BigInt(preImage) + 1n).toString(16).padStart(64, "0")}`;
+    const claimHash = ethers.solidityPackedKeccak256(
+      ["bytes32"],
+      [claimPreImage],
+    );
+    const txData = await this.contract.beginClaim.populateTransaction(
+      claimHash,
+      accounts[0],
+    );
+    await window.ethereum.request({
+      method: "eth_sendTransaction",
+      params: [
+        {
+          to: this.contract.target,
+          from: accounts[0],
+          data: txData.data,
+        },
+      ],
+    });
+  }
+
+  async finishClaim(preImage) {
+    if (!window.ethereum) {
+      throw new Error("no ethereum provider");
+    }
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+    const claimPreImage = `0x${(BigInt(preImage) + 1n).toString(16).padStart(64, "0")}`;
+    const claimHash = ethers.solidityPackedKeccak256(
+      ["bytes32"],
+      [claimPreImage],
+    );
+    // check if a claim already exists, finalize claim if possible
+    const claim = await this.contract.claims(claimHash);
+    if (claim.validUntil <= +new Date() / 1000) {
+      throw new Error("claim does not exist or is expired");
+    }
+    if (BigInt(claim.claimant) !== BigInt(accounts[0])) {
+      throw new Error("claim already exists and is not yours");
+    }
+    const txData = await this.contract.finishClaim.populateTransaction(
+      preImage,
+      this.nextTarget[1],
+    );
+    await window.ethereum.request({
+      method: "eth_sendTransaction",
+      params: [
+        {
+          to: this.contract.target,
+          from: accounts[0],
+          data: txData.data,
+        },
+      ],
+    });
+  }
+
   async beginOrFinishClaim(preImage) {
     if (!window.ethereum) {
       throw new Error("no ethereum provider");
@@ -77,7 +152,7 @@ export default class ContractState {
       claimHash,
       accounts[0],
     );
-    await window.ethereum.request({
+    return window.ethereum.request({
       method: "eth_sendTransaction",
       params: [
         {
