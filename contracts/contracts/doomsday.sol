@@ -35,6 +35,7 @@ contract KeccakDoomsday is ERC20 {
     uint256 public immutable HALT_TIMEOUT = 10 * 365 * 24 * 60 * 60;
     bool public halted;
     uint8 public bitCount;
+    uint8 public startBits;
 
     uint256 public immutable CLAIM_TIMEOUT = 24 hours;
     uint256 public immutable WEI_PER_TOKEN = 1 gwei;
@@ -50,13 +51,14 @@ contract KeccakDoomsday is ERC20 {
     // pre-images with outputs near each other we want to know
     constructor(
         bytes32 _rootHash,
-        uint8 startBits,
+        uint8 _startBits,
         uint8 len
     ) ERC20("KeccakDoomsday", "KDD") {
         startTime = block.timestamp;
         rootHash = _rootHash;
         bitCount = len;
-        for (uint8 x = startBits; x < startBits + len; x++) {
+        startBits = _startBits;
+        for (uint8 x = _startBits; x < _startBits + len; x++) {
             targets[x] = HashTarget({
                 hash: bytes32(uint256(rootHash) + uint256(x)),
                 bits: x,
