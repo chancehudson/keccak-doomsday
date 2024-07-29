@@ -26,4 +26,4 @@ jobs:
       - name: Install
         run: cd contracts && npm i
       - name: Test
-        run: cd contracts && npm t
+        run: cd contracts && npm run coverage
