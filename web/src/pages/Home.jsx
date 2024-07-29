@@ -26,6 +26,14 @@ export default observer(() => {
       >
         <h2>Keccak Doomsday</h2>
         <p>Put a bounty on progressively breaking the Keccak hash function!</p>
+        <p>
+          <a
+            target="_blank"
+            href="https://github.com/chancehudson/keccak-doomsday"
+          >
+            source
+          </a>
+        </p>
         <h4>Why?</h4>
         <p>
           Ethereum relies on the Keccak256 hash function for a lot of things.
