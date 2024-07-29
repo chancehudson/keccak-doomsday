@@ -10,6 +10,7 @@ export default class ContractState {
   nextTarget = null;
   expectedReward = 0n;
   address = "0xff13a845927bf61aece68c8503ffb74fa244d58c";
+  haltsAt = new Date(0);
 
   constructor() {
     makeAutoObservable(this);
@@ -114,56 +115,6 @@ export default class ContractState {
     });
   }
 
-  async beginOrFinishClaim(preImage) {
-    if (!window.ethereum) {
-      throw new Error("no ethereum provider");
-    }
-    const accounts = await window.ethereum.request({
-      method: "eth_requestAccounts",
-    });
-    const claimPreImage = `0x${(BigInt(preImage) + 1n).toString(16).padStart(64, "0")}`;
-    const claimHash = ethers.solidityPackedKeccak256(
-      ["bytes32"],
-      [claimPreImage],
-    );
-    // check if a claim already exists, finalize claim if possible
-    const claim = await this.contract.claims(claimHash);
-    if (claim.validUntil > +new Date() / 1000) {
-      if (BigInt(claim.claimant) !== BigInt(accounts[0])) {
-        throw new Error("claim already exists and is not yours");
-      }
-      const txData = await this.contract.finishClaim.populateTransaction(
-        preImage,
-        this.nextTarget[1],
-      );
-      await window.ethereum.request({
-        method: "eth_sendTransaction",
-        params: [
-          {
-            to: this.contract.target,
-            from: accounts[0],
-            data: txData.data,
-          },
-        ],
-      });
-      return;
-    }
-    const txData = await this.contract.beginClaim.populateTransaction(
-      claimHash,
-      accounts[0],
-    );
-    return window.ethereum.request({
-      method: "eth_sendTransaction",
-      params: [
-        {
-          to: this.contract.target,
-          from: accounts[0],
-          data: txData.data,
-        },
-      ],
-    });
-  }
-
   async deposit(weiAmount) {
     if (!window.ethereum) {
       throw new Error("no ethereum provider");
@@ -198,7 +149,13 @@ export default class ContractState {
   }
 
   async loadHalted() {
-    this.halted = await this.contract.halted();
+    const [halted, startTime, HALT_TIMEOUT] = await Promise.all([
+      this.contract.halted(),
+      this.contract.startTime(),
+      this.contract.HALT_TIMEOUT(),
+    ]);
+    this.halted = halted;
+    this.haltsAt = new Date(Number(startTime + HALT_TIMEOUT) * 1000);
   }
 
   async loadNextTarget() {

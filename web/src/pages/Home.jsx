@@ -81,6 +81,9 @@ export default observer(() => {
         <p>
           Halted: <strong>{contract.halted.toString()}</strong>
         </p>
+        <p>
+          Halts at: <strong>{contract.haltsAt.toString()}</strong>
+        </p>
         {contract.nextTarget ? (
           <>
             <p>Next target: </p>
