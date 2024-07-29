@@ -50,6 +50,9 @@ export default observer(() => {
         DEV NOTE: for testing you can use finish claim immediately after begin
         claim transaction is confirmed.
       </p>
+      <p>
+        WARNING: finding a collision in browser may cause the browser to freeze.
+      </p>
       <input
         placeholder="hash pre-image hex"
         type="text"

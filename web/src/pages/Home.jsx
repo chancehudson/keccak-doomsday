@@ -42,7 +42,13 @@ export default observer(() => {
           Anyone can send Ether to the contract and receive KDD tokens in
           return. As the hash function is broken the Ether is paid out to those
           that prove they broke it. After 10 years the contract halts and any
-          remaining Ether is returned to the token holders.
+          remaining Ether (from unbroken targets) is returned to the token
+          holders.
+        </p>
+        <p>
+          Larger amounts are paid out as fewer targets are left to break. If the
+          contract balance remains the same all payouts will be equal. This
+          means later targets get a proportionately larger payout.
         </p>
       </div>
       <div

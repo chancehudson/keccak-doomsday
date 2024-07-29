@@ -73,7 +73,7 @@ contract KeccakDoomsday is ERC20 {
     }
 
     function expectedReward() public view returns (uint256) {
-        return balance / bitCount;
+        return balance / (bitCount - claimedCount());
     }
 
     function nextTarget() public view returns (HashTarget memory) {
@@ -89,6 +89,16 @@ contract KeccakDoomsday is ERC20 {
                 claimed: false,
                 claimedBy: payable(address(uint160(0)))
             });
+    }
+
+    function claimedCount() public view returns (uint8) {
+        uint8 count = 0;
+        for (uint8 x = startBits; x < startBits + bitCount; x++) {
+            if (targets[x].claimed) {
+                count++;
+            }
+        }
+        return count;
     }
 
     // the time at which bounties are removed and funds are
@@ -140,8 +150,8 @@ contract KeccakDoomsday is ERC20 {
         require(target.claimed == false, "target has already been claimed");
         bytes32 mask = bytes32(~(type(uint256).max << bits));
         require((hash & mask) == (target.hash & mask), "hash mismatch");
-        target.claimed = true;
         uint256 claimAmount = expectedReward();
+        target.claimed = true;
         balance -= claimAmount;
         claims[claimHash].claimant.transfer(claimAmount);
         emit HashClaimed(bits, claims[claimHash].claimant, claimAmount);

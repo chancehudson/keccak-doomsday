@@ -9,7 +9,7 @@ export default class ContractState {
   targets = [];
   nextTarget = null;
   expectedReward = 0n;
-  address = "0xbbb33a51e9d61ef9582a4c4639e0e9f8abf03aaf";
+  address = "0xff13a845927bf61aece68c8503ffb74fa244d58c";
 
   constructor() {
     makeAutoObservable(this);
